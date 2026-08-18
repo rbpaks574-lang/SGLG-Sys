@@ -27,10 +27,13 @@ chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 php artisan storage:link --force || true
 
 # Run database migrations and seeders
-echo "=== Running Database Migrations & Seeds ==="
-php artisan migrate --force --seed || echo "Database migration warning: please verify database credentials."
+echo "=== Running Database Migrations ==="
+php artisan migrate --force || echo "Migration notice"
 
-# Cache configs and routes for production speed
+echo "=== Running Database Seeders ==="
+php artisan db:seed --force || echo "Seeder notice"
+
+# Cache configs and routes
 php artisan config:cache || true
 php artisan route:cache || true
 php artisan view:cache || true
