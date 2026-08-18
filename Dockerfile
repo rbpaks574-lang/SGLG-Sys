@@ -1,25 +1,14 @@
 # ==========================================
-# Stage 1: Build Frontend Assets (Vite / React)
+# Stage 1: Build Backend & Frontend Assets
 # ==========================================
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app
+FROM php:8.3-fpm-alpine AS builder
 
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-# ==========================================
-# Stage 2: Production PHP-FPM + Nginx
-# ==========================================
-FROM php:8.3-fpm-alpine
-
-# Install system dependencies & Nginx
+# Install system dependencies, PHP extensions, and Node.js
 RUN apk add --no-cache \
-    nginx \
     curl \
     git \
+    nodejs \
+    npm \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -27,10 +16,8 @@ RUN apk add --no-cache \
     icu-dev \
     sqlite-dev \
     oniguruma-dev \
-    bash
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    bash \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
         pdo_mysql \
@@ -47,14 +34,52 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy application files
+# Copy all project files
 COPY . .
 
-# Copy built frontend assets from Stage 1
-COPY --from=frontend-builder /app/public/build /var/www/html/public/build
-
-# Install PHP dependencies for production
+# Install PHP dependencies first (so Artisan and Wayfinder work during Vite build)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Install NPM packages and build frontend assets
+RUN npm ci && npm run build
+
+# ==========================================
+# Stage 2: Production Server (PHP-FPM + Nginx)
+# ==========================================
+FROM php:8.3-fpm-alpine
+
+# Install production runtime dependencies & Nginx
+RUN apk add --no-cache \
+    nginx \
+    curl \
+    git \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    icu-dev \
+    sqlite-dev \
+    oniguruma-dev \
+    bash \
+    ca-certificates \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_mysql \
+        pdo_sqlite \
+        gd \
+        zip \
+        bcmath \
+        intl \
+        mbstring \
+        opcache
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Copy everything from builder (including vendor and public/build)
+COPY --from=builder /var/www/html /var/www/html
 
 # Copy Nginx config & Entrypoint script
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
