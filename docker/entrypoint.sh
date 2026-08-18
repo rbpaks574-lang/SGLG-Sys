@@ -26,12 +26,12 @@ chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 # Create storage symlink
 php artisan storage:link --force || true
 
-# Run database migrations and seeders
-echo "=== Running Database Migrations ==="
-php artisan migrate --force || echo "Migration notice"
+# Test database connection and run migrations
+echo "=== Running Database Migrations (Verbose) ==="
+php artisan migrate --force --verbose || echo "Database migration failed: please check DB credentials in Render Environment tab."
 
-echo "=== Running Database Seeders ==="
-php artisan db:seed --force || echo "Seeder notice"
+echo "=== Running Database Seeders (Verbose) ==="
+php artisan db:seed --force --verbose || echo "Database seeders failed: please check DB credentials in Render Environment tab."
 
 # Cache configs and routes
 php artisan config:cache || true
