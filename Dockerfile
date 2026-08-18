@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build Backend & Frontend Assets
 # ==========================================
-FROM php:8.3-fpm-alpine AS builder
+FROM php:8.4-fpm-alpine AS builder
 
 # Install system dependencies, PHP extensions, and Node.js
 RUN apk add --no-cache \
@@ -46,7 +46,7 @@ RUN npm ci && npm run build
 # ==========================================
 # Stage 2: Production Server (PHP-FPM + Nginx)
 # ==========================================
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install production runtime dependencies & Nginx
 RUN apk add --no-cache \
