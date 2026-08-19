@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import {
@@ -14,6 +14,11 @@ import {
     RotateCcw,
     Send,
     Shield,
+    UploadCloud,
+    Paperclip,
+    Trash2,
+    Plus,
+    X,
 } from 'lucide-react';
 import DocumentViewerModal from '@/components/ui/document-viewer-modal';
 
@@ -42,6 +47,10 @@ export default function SubmissionShow({ submission }: Props) {
     const page = usePage();
     const user = page.props.auth?.user;
     const canReview = user?.role === 'admin' || user?.role === 'checker';
+    const canResubmit = user?.role === 'barangay' || user?.role === 'admin' || user?.id === submission?.user?.id;
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedNewFiles, setSelectedNewFiles] = useState<File[]>([]);
 
     const [selectedFile, setSelectedFile] = useState<{ id?: number; name: string; type?: string; size?: number; url?: string } | null>(null);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -58,6 +67,46 @@ export default function SubmissionShow({ submission }: Props) {
         remarks: '',
         checklists: initialChecklists,
     });
+
+    const {
+        data: resubmitData,
+        setData: setResubmitData,
+        post: postResubmit,
+        processing: resubmitting,
+        reset: resetResubmit,
+    } = useForm<{
+        files: File[];
+        resubmit_remarks: string;
+    }>({
+        files: [],
+        resubmit_remarks: '',
+    });
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const filesArr = Array.from(e.target.files);
+            const combined = [...selectedNewFiles, ...filesArr];
+            setSelectedNewFiles(combined);
+            setResubmitData('files', combined);
+        }
+    };
+
+    const removeNewFile = (index: number) => {
+        const updated = selectedNewFiles.filter((_, idx) => idx !== index);
+        setSelectedNewFiles(updated);
+        setResubmitData('files', updated);
+    };
+
+    const handleResubmit = (e: FormEvent) => {
+        e.preventDefault();
+        postResubmit(`/submissions/${submission.id}/resubmit`, {
+            forceFormData: true,
+            onSuccess: () => {
+                setSelectedNewFiles([]);
+                resetResubmit();
+            },
+        });
+    };
 
     const toggleChecklist = (reqName: string) => {
         const updated = {
@@ -203,6 +252,125 @@ export default function SubmissionShow({ submission }: Props) {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Re-attach & Resubmit Document Panel (When Returned or for Submitter) */}
+                        {canResubmit && (
+                            <div className={`rounded-xl border p-5 shadow-sm space-y-4 transition-all ${
+                                submission.status === 'returned'
+                                    ? 'bg-rose-500/5 border-rose-400 dark:bg-rose-950/20 dark:border-rose-800'
+                                    : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-800'
+                            }`}>
+                                <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-3 dark:border-slate-800">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={`p-2 rounded-lg ${
+                                            submission.status === 'returned'
+                                                ? 'bg-rose-500 text-white'
+                                                : 'bg-slate-900 text-white dark:bg-slate-800'
+                                        }`}>
+                                            <RotateCcw className="size-4" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                                Re-attach & Resubmit Document
+                                                {submission.status === 'returned' && (
+                                                    <span className="badge badge-error badge-xs font-bold text-white">
+                                                        CORRECTION REQUIRED
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            <p className="text-xs text-slate-500">
+                                                {submission.status === 'returned'
+                                                    ? 'This document was returned for revision. Attach your updated or corrected files below and click Resubmit to return this document to the Checker Pending Queue.'
+                                                    : 'Attach additional or revised documents to this submission.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <form onSubmit={handleResubmit} className="space-y-3">
+                                    {/* Dropzone / Upload area */}
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-sky-500 dark:hover:border-sky-400 transition-colors cursor-pointer bg-slate-50/50 dark:bg-slate-800/30"
+                                    >
+                                        <UploadCloud className="size-8 text-slate-400 mx-auto mb-2" />
+                                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                            Click here or drag files to attach revised documents
+                                        </p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">
+                                            Supports PDF, DOCX, XLSX, PNG, JPG (up to 25MB per file)
+                                        </p>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            multiple
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"
+                                        />
+                                    </div>
+
+                                    {/* List of newly selected files */}
+                                    {selectedNewFiles.length > 0 && (
+                                        <div className="space-y-1.5">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                                New Files to Attach ({selectedNewFiles.length})
+                                            </span>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {selectedNewFiles.map((file, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-xs shadow-xs"
+                                                    >
+                                                        <div className="flex items-center gap-2 truncate">
+                                                            <Paperclip className="size-3.5 text-sky-500 shrink-0" />
+                                                            <span className="truncate font-medium text-slate-800 dark:text-slate-200">
+                                                                {file.name}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400 shrink-0">
+                                                                ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeNewFile(idx)}
+                                                            className="btn btn-ghost btn-circle btn-xs text-rose-500 hover:text-rose-700"
+                                                        >
+                                                            <Trash2 className="size-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Optional Submitter Notes */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            Secretary Revision Notes (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={resubmitData.resubmit_remarks}
+                                            onChange={(e) => setResubmitData('resubmit_remarks', e.target.value)}
+                                            placeholder="e.g., Attached revised Ordinance with complete signatures and dry seal..."
+                                            className="input input-sm input-bordered w-full text-xs font-medium"
+                                        />
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center justify-end gap-2 pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={resubmitting || selectedNewFiles.length === 0}
+                                            className="btn btn-sm btn-neutral text-white font-semibold text-xs gap-1.5 rounded-lg shadow-sm"
+                                        >
+                                            <Send className="size-3.5" /> {resubmitting ? 'Resubmitting...' : 'Resubmit Document to Checker (Set to Pending)'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
 
                         {/* Reviewer Action Form (Only for Checker / Admin) */}
                         {canReview && (

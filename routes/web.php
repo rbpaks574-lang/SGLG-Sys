@@ -30,6 +30,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/submissions', [SubmissionController::class, 'store'])->name('submissions.store');
     Route::get('/submissions/{submission}', [SubmissionController::class, 'show'])->name('submissions.show');
     Route::post('/submissions/{submission}/review', [SubmissionController::class, 'review'])->name('submissions.review');
+    Route::post('/submissions/{submission}/resubmit', [SubmissionController::class, 'resubmit'])->name('submissions.resubmit');
     Route::get('/history', [SubmissionController::class, 'history'])->name('history.index');
 
     // Barangays (Complete 64 list & ranking for Admin / updates)

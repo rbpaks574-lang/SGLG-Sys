@@ -407,4 +407,96 @@ class SubmissionController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Resubmit a returned submission with revised attachments.
+     * Changes status back to 'pending' for Checker re-validation.
+     */
+    public function resubmit(Request $request, Submission $submission): RedirectResponse
+    {
+        $user = $request->user();
+
+        // Authorization check: must be owner, same barangay user, or admin
+        if (! ($user->isAdmin() || $user->id === $submission->user_id || $user->barangay_id === $submission->barangay_id)) {
+            abort(403, 'Unauthorized to resubmit this document.');
+        }
+
+        $request->validate([
+            'files' => 'nullable|array',
+            'files.*' => 'file|max:25600', // 25MB max
+            'resubmit_remarks' => 'nullable|string|max:1000',
+        ]);
+
+        // Upload any newly attached files
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $uploadedFile) {
+                $originalName = $uploadedFile->getClientOriginalName();
+                $extension = strtolower($uploadedFile->getClientOriginalExtension());
+                $mimeType = $uploadedFile->getMimeType();
+                $size = $uploadedFile->getSize();
+
+                $fileType = match (true) {
+                    in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif']) => 'image',
+                    in_array($extension, ['pdf']) => 'pdf',
+                    in_array($extension, ['doc', 'docx']) => 'docs',
+                    in_array($extension, ['xls', 'xlsx', 'csv']) => 'excel',
+                    default => 'file',
+                };
+
+                $path = $uploadedFile->store("submissions/{$submission->id}", 'public');
+
+                SubmissionFile::create([
+                    'submission_id' => $submission->id,
+                    'original_name' => $originalName,
+                    'file_path' => $path,
+                    'file_size' => $size,
+                    'file_type' => $fileType,
+                    'mime_type' => $mimeType,
+                ]);
+            }
+        }
+
+        // Check if overdue relative to deadline
+        $isLate = $submission->is_late;
+        if ($submission->deadline && Carbon::now()->isAfter($submission->deadline->due_date)) {
+            $isLate = true;
+        }
+
+        // Set status back to pending and refresh submission date
+        $submission->update([
+            'status' => 'pending',
+            'is_late' => $isLate,
+            'submitted_at' => now(),
+        ]);
+
+        // Reset checklist items for fresh checker verification
+        $submission->checklists()->update([
+            'is_checked' => false,
+            'checked_by' => null,
+            'checked_at' => null,
+        ]);
+
+        // Log resubmission
+        AuditLog::log(
+            'SUBMISSION_RESUBMITTED',
+            "Barangay {$submission->barangay?->name} re-submitted \"{$submission->title}\" with revised attachments for re-evaluation.",
+            'Submission',
+            $submission->id,
+            $user
+        );
+
+        // Notify Checkers and Admins
+        $checkers = User::whereIn('role', ['checker', 'admin'])->get();
+        foreach ($checkers as $checker) {
+            Notification::create([
+                'user_id' => $checker->id,
+                'title' => 'Document Resubmitted for Verification',
+                'message' => "Barangay {$submission->barangay?->name} has resubmitted \"{$submission->title}\".",
+                'type' => 'info',
+                'link' => "/submissions/{$submission->id}",
+            ]);
+        }
+
+        return back()->with('success', 'Document successfully resubmitted! It has been returned to the Pending Verification Queue for DILG Checkers.');
+    }
 }
