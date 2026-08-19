@@ -11,6 +11,7 @@ import {
     PieChart,
     Megaphone,
     Activity,
+    Calendar,
     Plus,
     ArrowRight,
     X,
@@ -272,11 +273,11 @@ export default function AdminDashboard({
                                         className="p-3 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-800/40 dark:border-slate-700"
                                     >
                                         <div className="flex items-center justify-between mb-1">
-                                            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[190px]">
+                                            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[170px]">
                                                 {a.title}
                                             </h4>
-                                            <span className="badge badge-ghost badge-xs text-[9px] uppercase font-mono">
-                                                {a.target_role}
+                                            <span className="text-[10px] text-slate-400 font-mono shrink-0 flex items-center gap-1">
+                                                <Calendar className="size-2.5" /> {a.created_at}
                                             </span>
                                         </div>
                                         <p className="text-[11px] text-slate-500 line-clamp-2 dark:text-slate-400">

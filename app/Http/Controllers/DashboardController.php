@@ -114,7 +114,7 @@ class DashboardController extends Controller
                 'content' => $a->content,
                 'is_pinned' => $a->is_pinned,
                 'attachment_name' => $a->attachment_name,
-                'created_at' => Carbon::parse($a->created_at)->format('M d, Y'),
+                'created_at' => Carbon::parse($a->created_at)->format('M d, Y h:i A'),
             ]);
 
         return Inertia::render('dashboard/user-dashboard', [
@@ -301,7 +301,18 @@ class DashboardController extends Controller
             ]);
 
         // Broadcast Announcements
-        $announcements = Announcement::latest()->take(4)->get();
+        $announcements = Announcement::latest()
+            ->take(4)
+            ->get()
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'title' => $a->title,
+                'content' => $a->content,
+                'target_role' => $a->target_role,
+                'is_pinned' => $a->is_pinned,
+                'attachment_name' => $a->attachment_name,
+                'created_at' => Carbon::parse($a->created_at)->format('M d, Y h:i A'),
+            ]);
 
         return Inertia::render('dashboard/admin-dashboard', [
             'metrics' => [

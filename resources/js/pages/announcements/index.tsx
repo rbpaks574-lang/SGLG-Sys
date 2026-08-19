@@ -5,6 +5,7 @@ import {
     Megaphone,
     Plus,
     Calendar,
+    Clock,
     Pin,
     Download,
     Trash2,
@@ -14,6 +15,18 @@ import {
     Eye,
 } from 'lucide-react';
 import AlertModal from '@/components/ui/alert-modal';
+
+const formatDateTime = (dateStr: string) => {
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        return `${datePart} ${timePart}`;
+    } catch {
+        return dateStr;
+    }
+};
 
 type AnnouncementItem = {
     id: number;
@@ -128,8 +141,8 @@ export default function AnnouncementsIndex({ announcements, canManage }: Props) 
                                             {a.target_role}
                                         </span>
                                     </div>
-                                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                        <Calendar className="size-3" /> {new Date(a.created_at).toLocaleDateString()}
+                                    <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                                        <Calendar className="size-3 text-slate-400" /> {formatDateTime(a.created_at)}
                                     </span>
                                 </div>
 
@@ -286,7 +299,9 @@ export default function AnnouncementsIndex({ announcements, canManage }: Props) 
 
                         <div className="p-5 space-y-3 text-xs">
                             <div className="flex items-center justify-between text-[10px] text-slate-400 border-b border-slate-100 pb-2 dark:border-slate-800">
-                                <span>Published: {new Date(selectedAnnouncement.created_at).toLocaleDateString()}</span>
+                                <span className="flex items-center gap-1 font-mono">
+                                    <Calendar className="size-3 text-slate-400" /> Published: {formatDateTime(selectedAnnouncement.created_at)}
+                                </span>
                                 <span className="badge badge-ghost badge-xs uppercase font-mono">
                                     Audience: {selectedAnnouncement.target_role}
                                 </span>

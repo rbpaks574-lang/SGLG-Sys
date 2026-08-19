@@ -503,7 +503,9 @@ export default function UserDashboard({
                                             <h4 className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[190px]">
                                                 {a.title}
                                             </h4>
-                                            <span className="text-[10px] text-slate-400">{a.created_at}</span>
+                                            <span className="text-[10px] text-slate-400 font-mono shrink-0 flex items-center gap-1">
+                                                <Calendar className="size-2.5" /> {a.created_at}
+                                            </span>
                                         </div>
                                         <p className="text-[11px] text-slate-500 line-clamp-2 dark:text-slate-400">
                                             {a.content}
