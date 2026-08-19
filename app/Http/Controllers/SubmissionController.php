@@ -280,8 +280,8 @@ class SubmissionController extends Controller
             }
         }
 
-        // Automated scoring: based on verified checklist items with substantial penalty deduction if late
-        $submission->load(['checklists', 'category.documentRequirements']);
+        // Automated scoring: based on verified checklist items, late penalty, and return/revision penalty
+        $submission->load(['checklists', 'category.documentRequirements', 'reviews']);
         $totalReqs = $submission->category?->documentRequirements?->count() ?? 0;
         if ($totalReqs === 0) {
             $totalReqs = $submission->checklists->count();
@@ -290,7 +290,12 @@ class SubmissionController extends Controller
         $checkedCount = $submission->checklists->where('is_checked', true)->count();
         $baseScore = $totalReqs > 0 ? round(($checkedCount / $totalReqs) * 100, 2) : 100.00;
         $lateDeduction = $submission->is_late ? 20.00 : 0.00;
-        $automatedScore = max(0.00, round($baseScore - $lateDeduction, 2));
+
+        // Count previous returns (errors/corrections penalty: -5 pts per return with remarks)
+        $previousReturnsCount = $submission->reviews->where('action', 'returned')->count();
+        $returnDeduction = $previousReturnsCount * 5.00;
+
+        $automatedScore = max(0.00, round($baseScore - $lateDeduction - $returnDeduction, 2));
 
         $finalScore = ($action === 'verified') ? $automatedScore : 0.00;
 

@@ -280,8 +280,9 @@ export default function UserDashboard({
                                                     <td className="font-semibold text-slate-800 dark:text-slate-200 max-w-[180px] truncate">
                                                         {sub.title}
                                                         {sub.latest_remark && (
-                                                            <div className="text-[10px] text-rose-500 truncate mt-0.5 font-normal">
-                                                                Remark: {sub.latest_remark}
+                                                            <div className="text-[10px] text-rose-500 truncate mt-0.5 font-medium flex items-center gap-1">
+                                                                <span className="badge badge-error badge-xs text-white text-[8px] font-bold">REMARKS</span>
+                                                                <span className="truncate">{sub.latest_remark}</span>
                                                             </div>
                                                         )}
                                                     </td>

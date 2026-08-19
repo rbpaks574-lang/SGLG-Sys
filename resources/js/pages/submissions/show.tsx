@@ -74,7 +74,17 @@ export default function SubmissionShow({ submission }: Props) {
     const checkedCount = Object.values(checklistState).filter(Boolean).length;
     const baseScore = Math.round((checkedCount / totalRequirements) * 100 * 10) / 10;
     const latePenalty = submission?.is_late ? 20.0 : 0.0;
-    const automatedCalculatedScore = Math.max(0, Math.round((baseScore - latePenalty) * 10) / 10);
+    const previousReturns = (submission?.reviews || []).filter((r) => r.action === 'returned').length;
+    const returnPenalty = previousReturns * 5.0;
+    const automatedCalculatedScore = Math.max(0, Math.round((baseScore - latePenalty - returnPenalty) * 10) / 10);
+
+    const quickDeficiencies = [
+        'Missing Official Signature',
+        'Incomplete Supporting Documents',
+        'Expired / Outdated Period',
+        'Budget / Data Discrepancy',
+        'Illegible / Blurry Attachment',
+    ];
 
     const submitReview = (actionType: 'verified' | 'returned' | 'under_review' | 'forwarded') => {
         data.action = actionType;
@@ -241,12 +251,32 @@ export default function SubmissionShow({ submission }: Props) {
 
                                 {/* Automated Score Breakdown Box */}
                                 <div className="p-4 rounded-xl bg-slate-100/80 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700 space-y-2.5">
-                                    <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-                                        Automated Score Breakdown
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                                            Compliance Grade Breakdown
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            {submission?.is_late && (
+                                                <span className="badge badge-error badge-xs font-bold text-white">
+                                                    LATE (-20 pts)
+                                                </span>
+                                            )}
+                                            {previousReturns > 0 && (
+                                                <span className="badge badge-warning badge-xs font-bold text-slate-900">
+                                                    {previousReturns} RETURN(S) (-{returnPenalty} pts)
+                                                </span>
+                                            )}
+                                            {!submission?.is_late && previousReturns === 0 && (
+                                                <span className="badge badge-success badge-xs font-bold text-white">
+                                                    CLEAN SUBMISSION
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center dark:bg-slate-900 dark:border-slate-800">
-                                            <span className="text-[10px] text-slate-400 block font-medium">Base Criteria Score</span>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+                                            <span className="text-[10px] text-slate-400 block font-medium">Base Criteria</span>
                                             <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
                                                 {baseScore.toFixed(1)}%
                                             </span>
@@ -255,30 +285,65 @@ export default function SubmissionShow({ submission }: Props) {
                                             </span>
                                         </div>
 
-                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center dark:bg-slate-900 dark:border-slate-800">
+                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
                                             <span className="text-[10px] text-slate-400 block font-medium">Late Penalty</span>
                                             <span className={`text-sm font-bold ${submission?.is_late ? 'text-rose-500' : 'text-emerald-500'}`}>
                                                 {submission?.is_late ? '-20.0 pts' : '0 pts'}
                                             </span>
                                             <span className="text-[9px] text-slate-400 block">
-                                                {submission?.is_late ? 'Late Submission Deduction' : 'Submitted On-Time'}
+                                                {submission?.is_late ? 'Overdue Deadline' : 'On-Time'}
                                             </span>
                                         </div>
 
-                                        <div className="p-2.5 rounded-lg bg-slate-900 text-white text-center dark:bg-slate-800 dark:border-slate-700">
-                                            <span className="text-[10px] text-slate-300 block font-semibold">Final Automated Score</span>
+                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+                                            <span className="text-[10px] text-slate-400 block font-medium">Return / Errors</span>
+                                            <span className={`text-sm font-bold ${previousReturns > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                {previousReturns > 0 ? `-${returnPenalty.toFixed(1)} pts` : '0 pts'}
+                                            </span>
+                                            <span className="text-[9px] text-slate-400 block">
+                                                {previousReturns > 0 ? `${previousReturns} Return(s)` : 'First Attempt'}
+                                            </span>
+                                        </div>
+
+                                        <div className="p-2.5 rounded-lg bg-slate-900 text-white dark:bg-slate-800 dark:border-slate-700">
+                                            <span className="text-[10px] text-slate-300 block font-semibold">Final Grade</span>
                                             <span className="text-base font-extrabold text-white">
                                                 {automatedCalculatedScore.toFixed(1)}%
                                             </span>
-                                            <span className="text-[9px] text-slate-300 block">Calculated Automatically</span>
+                                            <span className="text-[9px] text-slate-300 block">Auto-computed</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Checker Remarks & Feedback
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                            Checker Remarks & Deficiency Notes
+                                        </label>
+                                        <span className="text-[10px] text-rose-500 font-medium">
+                                            * -5.0 pts deduction per return
+                                        </span>
+                                    </div>
+
+                                    {/* Quick Deficiency Tags */}
+                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                        <span className="text-[10px] text-slate-400 self-center mr-1">Quick Error Tags:</span>
+                                        {quickDeficiencies.map((tag) => (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => {
+                                                    const current = data.remarks;
+                                                    const updated = current ? `${current}; ${tag}` : tag;
+                                                    setData('remarks', updated);
+                                                }}
+                                                className="badge badge-outline hover:badge-error text-[10px] cursor-pointer transition-colors"
+                                            >
+                                                + {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <textarea
                                         value={data.remarks}
                                         onChange={(e) => setData('remarks', e.target.value)}
@@ -304,7 +369,7 @@ export default function SubmissionShow({ submission }: Props) {
                                         onClick={() => submitReview('returned')}
                                         className="btn btn-sm btn-error text-white font-semibold text-xs gap-1.5 rounded-lg shadow-sm"
                                     >
-                                        <RotateCcw className="size-3.5" /> Return With Remarks
+                                        <RotateCcw className="size-3.5" /> Return With Remarks (-5 pts penalty)
                                     </button>
                                 </div>
                             </div>

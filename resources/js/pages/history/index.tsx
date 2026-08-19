@@ -184,6 +184,11 @@ export default function HistoryIndex({ submissions, categories, filters }: Props
                                             {sub.category.name}
                                         </span>
                                         {getStatusBadge(sub.status)}
+                                        {sub.status === 'returned' && (
+                                            <span className="badge badge-error badge-xs text-white font-bold">
+                                                CORRECTION NEEDED (-5 pts penalty on resubmission)
+                                            </span>
+                                        )}
                                         {sub.score > 0 && (
                                             <span className="badge badge-neutral badge-sm font-semibold font-mono">
                                                 Score: {sub.score.toFixed(1)}%
