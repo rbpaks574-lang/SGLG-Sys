@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Announcement;
 use App\Models\AuditLog;
 use App\Models\Barangay;
+use App\Models\Category;
 use App\Models\Deadline;
 use App\Models\Submission;
 use App\Models\SubmissionReview;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -71,8 +73,8 @@ class DashboardController extends Controller
             ->map(fn ($s) => [
                 'id' => $s->id,
                 'title' => $s->title,
-                'category_name' => $s->category->name,
-                'category_code' => $s->category->code,
+                'category_name' => $s->category?->name ?? 'General Compliance',
+                'category_code' => $s->category?->code ?? 'GEN',
                 'status' => $s->status,
                 'score' => (float) $s->score,
                 'submitted_at' => $s->submitted_at ? Carbon::parse($s->submitted_at)->format('M d, Y h:i A') : 'N/A',
@@ -96,7 +98,7 @@ class DashboardController extends Controller
                 'id' => $d->id,
                 'category_id' => $d->category_id,
                 'title' => $d->title,
-                'category_name' => $d->category->name,
+                'category_name' => $d->category?->name ?? 'General Compliance',
                 'due_date' => Carbon::parse($d->due_date)->format('M d, Y h:i A'),
                 'is_urgent' => Carbon::parse($d->due_date)->diffInDays(now()) <= 7,
                 'target_period' => $d->target_period,
