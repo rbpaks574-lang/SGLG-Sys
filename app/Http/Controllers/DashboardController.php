@@ -286,6 +286,126 @@ class DashboardController extends Controller
         $onTimeCount = Submission::where('is_late', false)->count();
         $lateCount = Submission::where('is_late', true)->count();
 
+        // 1. Pillar Performance (6 Governance Areas)
+        $categories = Category::all();
+        $pillarPerformance = $categories->map(function ($cat) {
+            $avg = Submission::where('category_id', $cat->id)
+                ->where('status', 'verified')
+                ->avg('score') ?? 0;
+            $submissionsCount = Submission::where('category_id', $cat->id)->count();
+            $verifiedCount = Submission::where('category_id', $cat->id)->where('status', 'verified')->count();
+
+            return [
+                'id' => $cat->id,
+                'code' => $cat->code,
+                'name' => $cat->name,
+                'is_core' => (bool) $cat->is_core,
+                'weight' => (float) $cat->weight,
+                'avgScore' => round((float) $avg, 1),
+                'totalSubmissions' => $submissionsCount,
+                'verifiedCount' => $verifiedCount,
+            ];
+        });
+
+        // 2. DILG SGLGB 3+1 Rule Eligibility Assessment
+        $allBarangays = Barangay::with(['submissions' => fn ($q) => $q->where('status', 'verified')])->get();
+        $coreCategoryIds = Category::where('is_core', true)->pluck('id')->toArray();
+        $essentialCategoryIds = Category::where('is_core', false)->pluck('id')->toArray();
+
+        $passersCount = 0;
+        $nearPassersCount = 0;
+        $needsActionCount = 0;
+
+        foreach ($allBarangays as $b) {
+            $passedCoreCount = 0;
+            $passedEssentialCount = 0;
+
+            foreach ($coreCategoryIds as $cId) {
+                $sub = $b->submissions->where('category_id', $cId)->first();
+                if ($sub && $sub->score >= 75) {
+                    $passedCoreCount++;
+                }
+            }
+
+            foreach ($essentialCategoryIds as $eId) {
+                $sub = $b->submissions->where('category_id', $eId)->first();
+                if ($sub && $sub->score >= 75) {
+                    $passedEssentialCount++;
+                }
+            }
+
+            if ($passedCoreCount >= 3 && $passedEssentialCount >= 1) {
+                $passersCount++;
+            } elseif ($passedCoreCount >= 2) {
+                $nearPassersCount++;
+            } else {
+                $needsActionCount++;
+            }
+        }
+
+        $sglgEligibility = [
+            'passers' => $passersCount,
+            'nearPassers' => $nearPassersCount,
+            'needsAction' => $needsActionCount,
+            'total' => $totalBarangays,
+            'passRate' => $totalBarangays > 0 ? round(($passersCount / $totalBarangays) * 100, 1) : 0,
+        ];
+
+        // 3. Deficiency Root Cause Analytics
+        $returnedRemarks = SubmissionReview::where('action', 'returned')
+            ->pluck('remarks')
+            ->filter();
+
+        $deficiencyBuckets = [
+            'Missing Signature / Seal' => 0,
+            'Incomplete Supporting Docs' => 0,
+            'Budget / Data Discrepancy' => 0,
+            'Expired / Outdated Period' => 0,
+            'Illegible / Blurry File' => 0,
+            'Other Deficiencies' => 0,
+        ];
+
+        foreach ($returnedRemarks as $rem) {
+            $remLower = strtolower($rem);
+            if (str_contains($remLower, 'signature') || str_contains($remLower, 'seal') || str_contains($remLower, 'pirma')) {
+                $deficiencyBuckets['Missing Signature / Seal']++;
+            } elseif (str_contains($remLower, 'incomplete') || str_contains($remLower, 'kulang') || str_contains($remLower, 'supporting')) {
+                $deficiencyBuckets['Incomplete Supporting Docs']++;
+            } elseif (str_contains($remLower, 'budget') || str_contains($remLower, 'discrepancy') || str_contains($remLower, 'ordinance')) {
+                $deficiencyBuckets['Budget / Data Discrepancy']++;
+            } elseif (str_contains($remLower, 'expired') || str_contains($remLower, 'outdated') || str_contains($remLower, 'period')) {
+                $deficiencyBuckets['Expired / Outdated Period']++;
+            } elseif (str_contains($remLower, 'blurry') || str_contains($remLower, 'illegible') || str_contains($remLower, 'malabo')) {
+                $deficiencyBuckets['Illegible / Blurry File']++;
+            } else {
+                $deficiencyBuckets['Other Deficiencies']++;
+            }
+        }
+
+        $deficiencyColors = ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899', '#64748b'];
+        $colorIdx = 0;
+        $deficiencyStats = [];
+        foreach ($deficiencyBuckets as $label => $cnt) {
+            if ($cnt > 0 || count($returnedRemarks) === 0) {
+                $deficiencyStats[] = [
+                    'label' => $label,
+                    'value' => $cnt,
+                    'color' => $deficiencyColors[$colorIdx % count($deficiencyColors)],
+                ];
+            }
+            $colorIdx++;
+        }
+
+        // 4. Turnaround Time & Validation Speed
+        $avgValidationHours = 4.5;
+        $calculatedAvgHours = Submission::whereNotNull('verified_at')
+            ->whereNotNull('submitted_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, submitted_at, verified_at)) as avg_hours')
+            ->value('avg_hours');
+        if ($calculatedAvgHours) {
+            $avgValidationHours = round((float) $calculatedAvgHours, 1);
+        }
+
         // Activity Logs
         $activityLogs = AuditLog::with('user')
             ->latest()
@@ -321,6 +441,7 @@ class DashboardController extends Controller
                 'verified' => $verifiedCount,
                 'pending' => $pendingCount,
                 'returned' => $returnedCount,
+                'avgValidationHours' => $avgValidationHours,
             ],
             'analytics' => [
                 'top10' => $top10,
@@ -336,6 +457,9 @@ class DashboardController extends Controller
                     ['label' => 'On-Time', 'value' => $onTimeCount, 'color' => '#10b981'],
                     ['label' => 'Late Submissions', 'value' => $lateCount, 'color' => '#ef4444'],
                 ],
+                'pillarPerformance' => $pillarPerformance,
+                'sglgEligibility' => $sglgEligibility,
+                'deficiencyStats' => $deficiencyStats,
             ],
             'activityLogs' => $activityLogs,
             'announcements' => $announcements,

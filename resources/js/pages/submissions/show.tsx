@@ -19,6 +19,8 @@ import {
     Trash2,
     Plus,
     X,
+    Receipt,
+    Archive,
 } from 'lucide-react';
 import DocumentViewerModal from '@/components/ui/document-viewer-modal';
 
@@ -37,7 +39,7 @@ type Props = {
         user: { id: number; name: string; email: string };
         verifier?: { id: number; name: string };
         deadline?: { id: number; title: string; due_date: string };
-        files: Array<{ id: number; original_name: string; file_type: string; file_size: number; file_path: string }>;
+        files: Array<{ id: number; original_name: string; file_type: string; file_size: number; file_path: string; is_revision?: boolean }>;
         checklists: Array<{ id: number; requirement_name: string; is_checked: boolean }>;
         reviews: Array<{ id: number; action: string; remarks: string; created_at: string; checker: { name: string } }>;
     };
@@ -177,7 +179,7 @@ export default function SubmissionShow({ submission }: Props) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {getStatusBadge(submission?.status || 'pending')}
                         {submission?.is_late && (
                             <span className="badge badge-error badge-sm text-white font-bold">
@@ -189,6 +191,28 @@ export default function SubmissionShow({ submission }: Props) {
                                 Verified Score: {Number(submission.score).toFixed(1)}%
                             </span>
                         )}
+
+                        <a
+                            href={`/submissions/${submission.id}/receipt`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-xs btn-outline font-semibold gap-1 rounded-lg"
+                            title="Official Submission Filing Acknowledgment Receipt"
+                        >
+                            <Receipt className="size-3 text-emerald-600 dark:text-emerald-400" /> E-Receipt
+                        </a>
+
+                        {(submission?.files || []).length > 0 && (
+                            <a
+                                href={`/submissions/${submission.id}/download-zip`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-xs btn-neutral font-semibold gap-1 rounded-lg"
+                                title="Download All Attached Files as ZIP Archive"
+                            >
+                                <Archive className="size-3" /> Download ZIP
+                            </a>
+                        )}
                     </div>
                 </div>
 
@@ -197,9 +221,21 @@ export default function SubmissionShow({ submission }: Props) {
                     <div className="lg:col-span-8 space-y-6">
                         {/* Files Inspection */}
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3">
-                                Attached Compliance Files ({(submission?.files || []).length})
-                            </h3>
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                    Attached Compliance Files ({(submission?.files || []).length})
+                                </h3>
+                                {(submission?.files || []).length > 1 && (
+                                    <a
+                                        href={`/submissions/${submission.id}/download-zip`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                                    >
+                                        <Archive className="size-3" /> Download All ({submission.files.length} Files)
+                                    </a>
+                                )}
+                            </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {(submission?.files || []).map((file) => (
@@ -214,12 +250,25 @@ export default function SubmissionShow({ submission }: Props) {
                                                 <FileText className="size-4 text-slate-600 shrink-0 mt-0.5" />
                                             )}
                                             <div className="truncate">
-                                                <p className="font-semibold text-xs text-slate-800 dark:text-slate-200 truncate">
-                                                    {file.original_name}
-                                                </p>
-                                                <span className="text-[10px] text-slate-400 uppercase">
-                                                    {file.file_type}
-                                                </span>
+                                                <div className="flex items-center gap-1.5 truncate">
+                                                    <p className="font-semibold text-xs text-slate-800 dark:text-slate-200 truncate">
+                                                        {file.original_name}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    {file.is_revision ? (
+                                                        <span className="badge badge-warning badge-xs font-bold text-[9px] text-amber-950">
+                                                            v2.0 REVISED
+                                                        </span>
+                                                    ) : (
+                                                        <span className="badge badge-ghost badge-xs font-mono text-[9px]">
+                                                            v1.0 INITIAL
+                                                        </span>
+                                                    )}
+                                                    <span className="text-[10px] text-slate-400 uppercase font-mono">
+                                                        {file.file_type}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
 

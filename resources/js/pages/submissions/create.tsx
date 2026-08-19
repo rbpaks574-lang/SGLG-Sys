@@ -14,6 +14,10 @@ import {
     Image as ImageIcon,
     Calendar,
     ArrowLeft,
+    Download,
+    CheckCircle2,
+    AlertTriangle,
+    Shield,
 } from 'lucide-react';
 
 type CategoryType = {
@@ -36,6 +40,13 @@ type CategoryType = {
         title: string;
         due_date: string;
         target_period: string;
+    }>;
+    document_templates?: Array<{
+        id: number;
+        name: string;
+        file_name: string;
+        file_path: string;
+        file_size?: number;
     }>;
 };
 
@@ -72,6 +83,15 @@ export default function SubmissionCreate({ categories, userBarangay }: Props) {
         requirements: [] as string[],
         files: [] as File[],
     });
+
+    const mandatoryReqs = selectedCategory?.document_requirements?.filter((r) => r.is_mandatory) || [];
+    const totalMandatory = mandatoryReqs.length;
+    const selectedMandatoryCount = mandatoryReqs.filter((r) => selectedRequirements.includes(r.name)).length;
+    const isAllMandatorySelected = totalMandatory === 0 || selectedMandatoryCount === totalMandatory;
+    const hasAttachedFiles = uploadedFiles.length > 0;
+    const readinessPercent = totalMandatory > 0
+        ? Math.round(((selectedMandatoryCount / totalMandatory) * 0.7 + (hasAttachedFiles ? 0.3 : 0)) * 100)
+        : (hasAttachedFiles ? 100 : 50);
 
     const getCategoryIcon = (code: string) => {
         switch (code) {
@@ -281,6 +301,26 @@ export default function SubmissionCreate({ categories, userBarangay }: Props) {
                                     </div>
                                 )}
 
+                                {/* Official DILG Template Shortcut */}
+                                {selectedCategory?.document_templates && selectedCategory.document_templates.length > 0 && (
+                                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-xs">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <Download className="size-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                                            <span className="text-sky-950 dark:text-sky-200 truncate">
+                                                Official Template: <strong>{selectedCategory.document_templates[0].name}</strong>
+                                            </span>
+                                        </div>
+                                        <a
+                                            href={`/templates/${selectedCategory.document_templates[0].id}/download`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="btn btn-xs btn-neutral shrink-0 text-[10px]"
+                                        >
+                                            Download (DOCX)
+                                        </a>
+                                    </div>
+                                )}
+
                                 {/* Required Documents Checklist (Checkboxes) */}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -407,6 +447,53 @@ export default function SubmissionCreate({ categories, userBarangay }: Props) {
                                             ))}
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Pre-Submission Completeness Meter & Warning */}
+                                <div className={`p-3.5 rounded-xl border space-y-2 transition-all ${
+                                    isAllMandatorySelected && hasAttachedFiles
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 dark:bg-emerald-950/20'
+                                        : 'bg-amber-500/10 border-amber-500/30 dark:bg-amber-950/20'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            {isAllMandatorySelected && hasAttachedFiles ? (
+                                                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                                            ) : (
+                                                <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+                                            )}
+                                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                                                Pre-Submission Completeness Meter
+                                            </span>
+                                        </div>
+                                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                                            {readinessPercent}% Ready
+                                        </span>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    <div className="h-2 w-full bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-300 ${
+                                                readinessPercent === 100 ? 'bg-emerald-500' : 'bg-amber-500'
+                                            }`}
+                                            style={{ width: `${readinessPercent}%` }}
+                                        />
+                                    </div>
+
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                                        {isAllMandatorySelected && hasAttachedFiles ? (
+                                            <span className="text-emerald-700 dark:text-emerald-300 font-medium">
+                                                ✓ All mandatory document types selected and files attached. Ready for validation!
+                                            </span>
+                                        ) : (
+                                            <span className="text-amber-800 dark:text-amber-300">
+                                                {!hasAttachedFiles
+                                                    ? '⚠️ Please attach at least 1 document file before submitting.'
+                                                    : `⚠️ Notice: ${totalMandatory - selectedMandatoryCount} mandatory requirement(s) unselected. Incomplete submissions may incur a -5.0 pts deduction if returned.`}
+                                            </span>
+                                        )}
+                                    </p>
                                 </div>
 
                                 {/* Form Actions */}

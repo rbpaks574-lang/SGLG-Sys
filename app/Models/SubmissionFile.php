@@ -17,10 +17,12 @@ class SubmissionFile extends Model
         'file_size',
         'file_type',
         'mime_type',
+        'is_revision',
     ];
 
     protected $casts = [
         'file_size' => 'integer',
+        'is_revision' => 'boolean',
     ];
 
     public function submission(): BelongsTo

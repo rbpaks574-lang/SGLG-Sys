@@ -145,3 +145,129 @@ export function DonutChart({
         </div>
     );
 }
+
+export type PillarData = {
+    id: number;
+    code: string;
+    name: string;
+    is_core: boolean;
+    weight: number;
+    avgScore: number;
+    totalSubmissions: number;
+    verifiedCount: number;
+};
+
+export function PillarComplianceBars({ pillars = [] }: { pillars?: PillarData[] }) {
+    if (!pillars || pillars.length === 0) {
+        return (
+            <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500">
+                No governance area data available.
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {pillars.map((pillar) => {
+                const score = pillar.avgScore || 0;
+                const isCore = pillar.is_core;
+
+                // Color based on score
+                const barColor = score >= 85
+                    ? 'bg-emerald-500'
+                    : score >= 70
+                    ? 'bg-amber-500'
+                    : score > 0
+                    ? 'bg-rose-500'
+                    : 'bg-slate-300 dark:bg-slate-700';
+
+                return (
+                    <div key={pillar.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5 truncate">
+                                <span className={`badge ${isCore ? 'badge-neutral' : 'badge-ghost'} badge-xs font-mono font-bold uppercase`}>
+                                    {isCore ? 'Core' : 'Essential'}
+                                </span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={pillar.name}>
+                                    {pillar.name}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] text-slate-400">
+                                    {pillar.verifiedCount}/{pillar.totalSubmissions} verified
+                                </span>
+                                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                                    {score.toFixed(1)}%
+                                </span>
+                            </div>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                style={{ width: `${Math.min(100, Math.max(score, score > 0 ? 4 : 0))}%` }}
+                            />
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+export type SglgEligibilityType = {
+    passers: number;
+    nearPassers: number;
+    needsAction: number;
+    total: number;
+    passRate: number;
+};
+
+export function SglgEligibilityCard({ data }: { data?: SglgEligibilityType }) {
+    const stats = data || { passers: 0, nearPassers: 0, needsAction: 64, total: 64, passRate: 0 };
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 dark:bg-emerald-950/20">
+                <div className="flex items-center gap-2">
+                    <span className="size-2.5 rounded-full bg-emerald-500 shrink-0" />
+                    <div>
+                        <span className="font-bold text-xs text-emerald-900 dark:text-emerald-300">SGLGB Award Qualified</span>
+                        <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/70">Passed 3 Core + &ge;1 Essential Area</p>
+                    </div>
+                </div>
+                <div className="text-right font-mono">
+                    <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">{stats.passers}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">/ {stats.total}</span>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/20">
+                <div className="flex items-center gap-2">
+                    <span className="size-2.5 rounded-full bg-amber-500 shrink-0" />
+                    <div>
+                        <span className="font-bold text-xs text-amber-900 dark:text-amber-300">Near-Passer / Potential</span>
+                        <p className="text-[10px] text-amber-700/80 dark:text-amber-400/70">Passed 2 Core Areas (Needs 1 more)</p>
+                    </div>
+                </div>
+                <div className="text-right font-mono">
+                    <span className="text-base font-extrabold text-amber-700 dark:text-amber-400">{stats.nearPassers}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">/ {stats.total}</span>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 dark:bg-rose-950/20">
+                <div className="flex items-center gap-2">
+                    <span className="size-2.5 rounded-full bg-rose-500 shrink-0" />
+                    <div>
+                        <span className="font-bold text-xs text-rose-900 dark:text-rose-300">Needs Intervention</span>
+                        <p className="text-[10px] text-rose-700/80 dark:text-rose-400/70">Failed &ge;2 Core Governance Areas</p>
+                    </div>
+                </div>
+                <div className="text-right font-mono">
+                    <span className="text-base font-extrabold text-rose-700 dark:text-rose-400">{stats.needsAction}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">/ {stats.total}</span>
+                </div>
+            </div>
+        </div>
+    );
+}

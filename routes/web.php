@@ -31,6 +31,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/submissions/{submission}', [SubmissionController::class, 'show'])->name('submissions.show');
     Route::post('/submissions/{submission}/review', [SubmissionController::class, 'review'])->name('submissions.review');
     Route::post('/submissions/{submission}/resubmit', [SubmissionController::class, 'resubmit'])->name('submissions.resubmit');
+    Route::get('/submissions/{submission}/download-zip', [SubmissionController::class, 'downloadZip'])->name('submissions.download-zip');
+    Route::get('/submissions/{submission}/receipt', [SubmissionController::class, 'receipt'])->name('submissions.receipt');
     Route::get('/history', [SubmissionController::class, 'history'])->name('history.index');
 
     // Barangays (Complete 64 list & ranking for Admin / updates)

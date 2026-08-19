@@ -15,8 +15,19 @@ import {
     Plus,
     ArrowRight,
     X,
+    Shield,
+    Award,
+    AlertTriangle,
+    Zap,
 } from 'lucide-react';
-import { BarChartTop10, DonutChart } from '@/components/ui/sglg-charts';
+import {
+    BarChartTop10,
+    DonutChart,
+    PillarComplianceBars,
+    PillarData,
+    SglgEligibilityCard,
+    SglgEligibilityType,
+} from '@/components/ui/sglg-charts';
 
 type Props = {
     metrics: {
@@ -25,12 +36,16 @@ type Props = {
         verified: number;
         pending: number;
         returned: number;
+        avgValidationHours?: number;
     };
     analytics: {
         top10: Array<{ rank: number; name: string; score: number }>;
         overallComplianceRate: number;
         complianceBreakdown: Array<{ label: string; value: number; color: string }>;
         statusDistribution: Array<{ label: string; value: number; color: string }>;
+        pillarPerformance?: PillarData[];
+        sglgEligibility?: SglgEligibilityType;
+        deficiencyStats?: Array<{ label: string; value: number; color: string }>;
     };
     activityLogs: Array<{
         id: number;
@@ -157,7 +172,7 @@ export default function AdminDashboard({
 
                 {/* 2-Column Split */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* Left: Top 10 + Overall Compliance in 1 Card (7 cols) */}
+                    {/* Left: Top 10 + SGLGB 3+1 Rule + Pillar Performance (7 cols) */}
                     <div className="lg:col-span-7 space-y-6">
                         {/* Combined Top 10 Bar Chart & Overall Compliance Donut Chart */}
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
@@ -204,6 +219,41 @@ export default function AdminDashboard({
                             </div>
                         </div>
 
+                        {/* DILG SGLGB "3+1 Principle" Award Eligibility Predictor */}
+                        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 dark:border-slate-800">
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                        <Award className="size-4 text-emerald-600 dark:text-emerald-400" /> SGLGB Award Eligibility Status (3+1 Principle)
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">
+                                        Official DILG standard: Pass 3 Core Areas + at least 1 Essential Area
+                                    </p>
+                                </div>
+                                <span className="badge badge-success text-white font-mono text-[11px] font-bold">
+                                    {analytics.sglgEligibility?.passRate ?? 0}% Pass Rate
+                                </span>
+                            </div>
+
+                            <SglgEligibilityCard data={analytics.sglgEligibility} />
+                        </div>
+
+                        {/* 6 Governance Pillars Compliance Breakdown */}
+                        <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 dark:border-slate-800">
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                        <Shield className="size-4 text-slate-600 dark:text-slate-300" /> SGLGB Governance Pillars Performance
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">
+                                        Compliance rates across the 6 Core and Essential areas
+                                    </p>
+                                </div>
+                            </div>
+
+                            <PillarComplianceBars pillars={analytics.pillarPerformance} />
+                        </div>
+
                         {/* Activity Logs with View All button */}
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 dark:border-slate-800">
@@ -246,7 +296,7 @@ export default function AdminDashboard({
                         </div>
                     </div>
 
-                    {/* Right: Broadcast Announcements & Submission Status (5 cols) */}
+                    {/* Right: Broadcast Announcements, Submission Status & Deficiency Analytics (5 cols) */}
                     <div className="lg:col-span-5 space-y-6">
                         {/* Broadcast Announcements */}
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
@@ -296,6 +346,26 @@ export default function AdminDashboard({
                                 </Link>
                             </div>
                         </div>
+
+                        {/* Return Deficiency Root Cause Analytics */}
+                        {(analytics.deficiencyStats || []).length > 0 && (
+                            <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                                <div className="border-b border-slate-100 pb-3 mb-4 dark:border-slate-800">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                        <AlertTriangle className="size-4 text-rose-500" /> Common Return Deficiency Causes
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">Root-cause breakdown of returned submissions</p>
+                                </div>
+
+                                <div className="py-2">
+                                    <DonutChart
+                                        data={analytics.deficiencyStats}
+                                        size={140}
+                                        centerLabel="Deficiencies"
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         {/* Submission Status Pie Chart */}
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">

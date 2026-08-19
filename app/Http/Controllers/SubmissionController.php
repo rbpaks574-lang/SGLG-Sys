@@ -15,8 +15,11 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use ZipArchive;
 
 class SubmissionController extends Controller
 {
@@ -94,7 +97,7 @@ class SubmissionController extends Controller
     {
         $user = $request->user()->load('barangay');
 
-        $categories = Category::with(['documentRequirements', 'deadlines' => function ($q) {
+        $categories = Category::with(['documentRequirements', 'documentTemplates', 'deadlines' => function ($q) {
             $q->orderBy('due_date');
         }])->get();
 
@@ -452,6 +455,7 @@ class SubmissionController extends Controller
                     'file_size' => $size,
                     'file_type' => $fileType,
                     'mime_type' => $mimeType,
+                    'is_revision' => true,
                 ]);
             }
         }
@@ -498,5 +502,66 @@ class SubmissionController extends Controller
         }
 
         return back()->with('success', 'Document successfully resubmitted! It has been returned to the Pending Verification Queue for DILG Checkers.');
+    }
+
+    /**
+     * Download all attached files of a submission as a ZIP archive.
+     */
+    public function downloadZip(Submission $submission): BinaryFileResponse|RedirectResponse
+    {
+        $submission->load(['barangay', 'category', 'files']);
+
+        if ($submission->files->isEmpty()) {
+            return back()->with('error', 'No compliance files attached to download.');
+        }
+
+        $barangaySlug = Str::slug($submission->barangay?->name ?? 'Barangay');
+        $categoryCode = $submission->category?->code ?? 'SGLG';
+        $zipFileName = "Submission_{$submission->id}_{$barangaySlug}_{$categoryCode}.zip";
+        $tempDir = storage_path('app/temp');
+
+        if (! file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $zipPath = $tempDir.'/'.$zipFileName;
+
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            foreach ($submission->files as $file) {
+                $storageFile = storage_path('app/public/'.$file->file_path);
+                if (file_exists($storageFile)) {
+                    $prefix = $file->is_revision ? '[REVISED] ' : '';
+                    $zip->addFile($storageFile, $prefix.$file->original_name);
+                }
+            }
+            $zip->close();
+        }
+
+        if (! file_exists($zipPath)) {
+            return back()->with('error', 'Unable to create ZIP archive.');
+        }
+
+        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Generate / view official Printable Filing E-Receipt for submission.
+     */
+    public function receipt(Submission $submission): Response
+    {
+        $submission->load([
+            'barangay',
+            'category',
+            'user',
+            'deadline',
+            'files',
+            'checklists',
+            'reviews.checker',
+        ]);
+
+        return Inertia::render('submissions/receipt', [
+            'submission' => $submission,
+        ]);
     }
 }
