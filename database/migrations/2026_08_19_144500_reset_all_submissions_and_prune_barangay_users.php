@@ -32,7 +32,7 @@ return new class extends Migration
             'population' => 0,
         ]);
 
-        // 3. Keep ONLY Admins, Checkers, and the 5 specified Barangay users (Brixe, Justin, David, JohnM, Jaron)
+        // 3. Keep ONLY Admins, Checkers, and the 6 Capstone Barangay Authors (Justin, Brixe, John Mark, John David, John Raymond, Jaron)
         $allowedKeywords = [
             'brixe',
             'brix',
@@ -41,6 +41,9 @@ return new class extends Migration
             'johnm',
             'johmm',
             'jaron',
+            'paqueo',
+            'paks',
+            'raymond',
         ];
 
         $users = User::all();
