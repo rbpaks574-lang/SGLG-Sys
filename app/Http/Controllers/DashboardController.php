@@ -398,14 +398,17 @@ class DashboardController extends Controller
             $colorIdx++;
         }
 
-        // 4. Turnaround Time & Validation Speed
+        // 4. Turnaround Time & Validation Speed (Database-agnostic calculation)
         $avgValidationHours = 4.5;
-        $calculatedAvgHours = Submission::whereNotNull('verified_at')
+        $verifiedSubmissions = Submission::whereNotNull('verified_at')
             ->whereNotNull('submitted_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, submitted_at, verified_at)) as avg_hours')
-            ->value('avg_hours');
-        if ($calculatedAvgHours) {
-            $avgValidationHours = round((float) $calculatedAvgHours, 1);
+            ->get(['submitted_at', 'verified_at']);
+
+        if ($verifiedSubmissions->isNotEmpty()) {
+            $totalHours = $verifiedSubmissions->sum(function ($s) {
+                return Carbon::parse($s->submitted_at)->diffInHours(Carbon::parse($s->verified_at));
+            });
+            $avgValidationHours = round($totalHours / $verifiedSubmissions->count(), 1);
         }
 
         // Activity Logs

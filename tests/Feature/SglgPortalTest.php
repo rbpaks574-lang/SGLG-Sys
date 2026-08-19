@@ -143,3 +143,49 @@ test('admin can view and filter audit logs', function () {
             ->has('logs')
         );
 });
+
+test('user can view official filing receipt for a submission', function () {
+    $user = User::where('role', 'barangay')->first();
+    $submission = Submission::first();
+
+    if ($submission) {
+        $response = $this->actingAs($user)->get("/submissions/{$submission->id}/receipt");
+        $response->assertStatus(200)
+            ->assertInertia(fn ($page) => $page
+                ->component('submissions/receipt')
+                ->has('submission')
+            );
+    }
+});
+
+test('user can resubmit / re-attach files for a submission', function () {
+    Storage::fake('public');
+    $user = User::where('role', 'barangay')->first();
+    $submission = Submission::first();
+
+    if ($submission) {
+        $file = UploadedFile::fake()->create('revised_ordinance.pdf', 300, 'application/pdf');
+
+        $response = $this->actingAs($user)->post("/submissions/{$submission->id}/resubmit", [
+            'resubmit_note' => 'Attached corrected resolution as requested.',
+            'files' => [$file],
+        ]);
+
+        $response->assertStatus(302);
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => 'pending',
+        ]);
+    }
+});
+
+test('user can download attached files as ZIP archive', function () {
+    Storage::fake('public');
+    $user = User::where('role', 'barangay')->first();
+    $submission = Submission::with('files')->first();
+
+    if ($submission && $submission->files->count() > 0) {
+        $response = $this->actingAs($user)->get("/submissions/{$submission->id}/download-zip");
+        $response->assertStatus(200);
+    }
+});

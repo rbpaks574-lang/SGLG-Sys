@@ -3,6 +3,13 @@
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Fortify\Features;
+
+beforeEach(function () {
+    if (! Features::enabled(Features::emailVerification())) {
+        test()->markTestSkipped('Email verification is not enabled.');
+    }
+});
 
 test('sends verification notification', function () {
     Notification::fake();
