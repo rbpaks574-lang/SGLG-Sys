@@ -73,7 +73,7 @@ export default function SubmissionShow({ submission }: Props) {
     const totalRequirements = checklistsList.length > 0 ? checklistsList.length : 1;
     const checkedCount = Object.values(checklistState).filter(Boolean).length;
     const baseScore = Math.round((checkedCount / totalRequirements) * 100 * 10) / 10;
-    const latePenalty = submission?.is_late ? 10.0 : 0.0;
+    const latePenalty = submission?.is_late ? 20.0 : 0.0;
     const automatedCalculatedScore = Math.max(0, Math.round((baseScore - latePenalty) * 10) / 10);
 
     const submitReview = (actionType: 'verified' | 'returned' | 'under_review' | 'forwarded') => {
@@ -258,7 +258,7 @@ export default function SubmissionShow({ submission }: Props) {
                                         <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center dark:bg-slate-900 dark:border-slate-800">
                                             <span className="text-[10px] text-slate-400 block font-medium">Late Penalty</span>
                                             <span className={`text-sm font-bold ${submission?.is_late ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                {submission?.is_late ? '-10.0 pts' : '0 pts'}
+                                                {submission?.is_late ? '-20.0 pts' : '0 pts'}
                                             </span>
                                             <span className="text-[9px] text-slate-400 block">
                                                 {submission?.is_late ? 'Late Submission Deduction' : 'Submitted On-Time'}
@@ -378,7 +378,7 @@ export default function SubmissionShow({ submission }: Props) {
                                 <div className="flex justify-between py-1">
                                     <span className="text-slate-500">Timeliness:</span>
                                     {submission?.is_late ? (
-                                        <span className="badge badge-error badge-xs font-bold text-white">LATE (-10 pts)</span>
+                                        <span className="badge badge-error badge-xs font-bold text-white">LATE (-20 pts)</span>
                                     ) : (
                                         <span className="badge badge-success badge-xs font-bold text-white">ON-TIME</span>
                                     )}
