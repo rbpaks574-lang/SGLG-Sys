@@ -16,6 +16,7 @@ import {
     Check,
     ArrowRight,
     FileText,
+    FileUp,
 } from 'lucide-react';
 import { BarChartTop10 } from '@/components/ui/sglg-charts';
 import DocumentViewerModal from '@/components/ui/document-viewer-modal';
@@ -48,6 +49,7 @@ type Props = {
     }>;
     upcomingDeadlines: Array<{
         id: number;
+        category_id: number;
         title: string;
         category_name: string;
         due_date: string;
@@ -67,6 +69,7 @@ type Props = {
         name: string;
         code: string;
         captain_name: string;
+        secretary_name: string;
         contact_number: string;
         pollution_status: string;
         population: number;
@@ -94,6 +97,7 @@ export default function UserDashboard({
     // Edit Barangay Info Form
     const { data, setData, put, processing } = useForm({
         captain_name: barangayInfo?.captain_name || '',
+        secretary_name: barangayInfo?.secretary_name || '',
         contact_number: barangayInfo?.contact_number || '',
         pollution_status: barangayInfo?.pollution_status || 'Low / Managed',
     });
@@ -360,6 +364,21 @@ export default function UserDashboard({
                                     />
                                 </div>
 
+                                {/* Barangay Secretary Name (Editable) */}
+                                <div>
+                                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                        <span>Barangay Secretary</span>
+                                        <span className="text-[9px] text-slate-400 lowercase">(account operator / editable)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={data.secretary_name}
+                                        onChange={(e) => setData('secretary_name', e.target.value)}
+                                        placeholder="Barangay Secretary Name"
+                                        className="input input-sm input-bordered w-full text-xs font-medium"
+                                    />
+                                </div>
+
                                 {/* Contact Number */}
                                 <div>
                                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -422,7 +441,7 @@ export default function UserDashboard({
                                     upcomingDeadlines.map((d) => (
                                         <div
                                             key={d.id}
-                                            className="p-3 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-800/50 dark:border-slate-700"
+                                            className="p-3 rounded-lg bg-slate-50 border border-slate-100 dark:bg-slate-800/50 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div>
@@ -439,8 +458,19 @@ export default function UserDashboard({
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="mt-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                                                <Clock className="size-3" /> Due: {d.due_date}
+
+                                            {/* Shortcut submit button */}
+                                            <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-200/70 dark:border-slate-700">
+                                                <div className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                                                    <Clock className="size-3 text-slate-400" /> Due: {d.due_date}
+                                                </div>
+                                                <Link
+                                                    href={`/submissions/create?category=${d.category_id}&deadline=${d.id}`}
+                                                    className="btn btn-xs btn-neutral text-[10px] font-semibold gap-1 rounded-md shadow-xs hover:scale-[1.02] transition-transform"
+                                                    title="Submit document for this deadline"
+                                                >
+                                                    <FileUp className="size-3" /> Magpasa
+                                                </Link>
                                             </div>
                                         </div>
                                     ))

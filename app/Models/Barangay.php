@@ -14,6 +14,7 @@ class Barangay extends Model
         'name',
         'code',
         'captain_name',
+        'secretary_name',
         'contact_number',
         'pollution_status',
         'population',

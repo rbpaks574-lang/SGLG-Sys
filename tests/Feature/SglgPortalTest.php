@@ -81,24 +81,43 @@ test('barangay user can submit a compliance document with attached files', funct
     ]);
 });
 
-test('checker can review and approve a submission with score', function () {
+test('checker can review and approve a submission with automated score', function () {
     $checker = User::where('role', 'checker')->first();
     $submission = Submission::where('status', 'pending')->first();
 
     if ($submission) {
+        $reqName = $submission->checklists->first()?->requirement_name ?? 'Document';
         $response = $this->actingAs($checker)->post("/submissions/{$submission->id}/review", [
             'action' => 'verified',
             'remarks' => 'All requirements properly attached and verified.',
-            'score' => 98.0,
+            'checklists' => [$reqName => true],
         ]);
 
         $response->assertStatus(302);
         $this->assertDatabaseHas('submissions', [
             'id' => $submission->id,
             'status' => 'verified',
-            'score' => 98.0,
         ]);
+        expect($submission->fresh()->score)->toBeGreaterThan(0.0);
     }
+});
+
+test('barangay secretary can update secretary name and profile details', function () {
+    $user = User::where('role', 'barangay')->first();
+    $barangay = $user->barangay ?? Barangay::first();
+
+    $response = $this->actingAs($user)->put("/barangays/{$barangay->id}", [
+        'captain_name' => 'Hon. Captain Test',
+        'secretary_name' => 'Sec. Maria Santos',
+        'contact_number' => '0917-123-4567',
+        'pollution_status' => 'Low / Managed',
+    ]);
+
+    $response->assertStatus(302);
+    $this->assertDatabaseHas('barangays', [
+        'id' => $barangay->id,
+        'secretary_name' => 'Sec. Maria Santos',
+    ]);
 });
 
 test('admin can view complete 64 barangay rankings and details', function () {

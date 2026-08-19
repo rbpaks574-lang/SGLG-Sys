@@ -94,6 +94,7 @@ class DashboardController extends Controller
             ->get()
             ->map(fn ($d) => [
                 'id' => $d->id,
+                'category_id' => $d->category_id,
                 'title' => $d->title,
                 'category_name' => $d->category->name,
                 'due_date' => Carbon::parse($d->due_date)->format('M d, Y h:i A'),
@@ -138,6 +139,7 @@ class DashboardController extends Controller
                 'name' => $barangay->name,
                 'code' => $barangay->code,
                 'captain_name' => $barangay->captain_name ?? 'Not set',
+                'secretary_name' => $barangay->secretary_name ?? 'Not set',
                 'contact_number' => $barangay->contact_number ?? 'Not set',
                 'pollution_status' => $barangay->pollution_status ?? 'Low / Managed',
                 'population' => $barangay->population,

@@ -43,20 +43,23 @@ export default function SubmissionShow({ submission }: Props) {
     const user = page.props.auth?.user;
     const canReview = user?.role === 'admin' || user?.role === 'checker';
 
-    const [selectedFile, setSelectedFile] = useState<{ id?: number; name: string; type?: string; size?: number; url?: string } | null>(null);
-    const [isViewerOpen, setIsViewerOpen] = useState(false);
+    const [checklistState, setChecklistState] = useState<Record<string, boolean>>(initialChecklists);
 
-    const initialChecklists: Record<string, boolean> = {};
-    submission.checklists.forEach((c) => {
-        initialChecklists[c.requirement_name] = c.is_checked;
-    });
+    const toggleChecklist = (reqName: string) => {
+        const updated = {
+            ...checklistState,
+            [reqName]: !checklistState[reqName],
+        };
+        setChecklistState(updated);
+        setData('checklists', updated);
+    };
 
-    const { data, setData, post, processing } = useForm({
-        action: 'verified' as 'verified' | 'returned' | 'under_review' | 'forwarded',
-        remarks: '',
-        score: submission.score > 0 ? submission.score : 95.0,
-        checklists: initialChecklists,
-    });
+    // Calculate automated score
+    const totalRequirements = submission.checklists.length || 1;
+    const checkedCount = Object.values(checklistState).filter(Boolean).length;
+    const baseScore = Math.round((checkedCount / totalRequirements) * 100 * 10) / 10;
+    const latePenalty = submission.is_late ? 10.0 : 0.0;
+    const automatedCalculatedScore = Math.max(0, Math.round((baseScore - latePenalty) * 10) / 10);
 
     const submitReview = (actionType: 'verified' | 'returned' | 'under_review' | 'forwarded') => {
         data.action = actionType;
@@ -102,9 +105,14 @@ export default function SubmissionShow({ submission }: Props) {
 
                     <div className="flex items-center gap-2">
                         {getStatusBadge(submission.status)}
+                        {submission.is_late && (
+                            <span className="badge badge-error badge-sm text-white font-bold">
+                                LATE SUBMISSION
+                            </span>
+                        )}
                         {submission.score > 0 && (
                             <span className="badge badge-neutral font-semibold text-xs font-mono">
-                                Score: {submission.score.toFixed(1)}%
+                                Verified Score: {submission.score.toFixed(1)}%
                             </span>
                         )}
                     </div>
@@ -173,36 +181,95 @@ export default function SubmissionShow({ submission }: Props) {
 
                         {/* Reviewer Action Form (Only for Checker / Admin) */}
                         {canReview && (
-                            <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800 space-y-3.5">
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                    <Shield className="size-4 text-slate-600 dark:text-slate-300" /> DILG Validation Assessment
-                                </h3>
+                            <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800 space-y-4">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                        <Shield className="size-4 text-slate-600 dark:text-slate-300" /> DILG Validation Assessment & Automated Scoring
+                                    </h3>
+                                    <span className="badge badge-info badge-xs font-semibold">AUTOMATIC SCORING</span>
+                                </div>
+
+                                {/* Checklist verification for checker */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                                        Verify Compliance Criteria (Tick verified requirements):
+                                    </label>
+                                    <div className="space-y-1.5 p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/40 dark:border-slate-700">
+                                        {submission.checklists.map((c) => {
+                                            const isChecked = Boolean(checklistState[c.requirement_name]);
+                                            return (
+                                                <label
+                                                    key={c.id}
+                                                    className="flex items-start gap-2.5 p-1.5 rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => toggleChecklist(c.requirement_name)}
+                                                        className="checkbox checkbox-xs checkbox-success mt-0.5"
+                                                    />
+                                                    <div className="text-xs">
+                                                        <span className={`font-medium ${isChecked ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500'}`}>
+                                                            {c.requirement_name}
+                                                        </span>
+                                                        {isChecked && (
+                                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold ml-2">
+                                                                ✓ Verified
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Automated Score Breakdown Box */}
+                                <div className="p-4 rounded-xl bg-slate-100/80 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700 space-y-2.5">
+                                    <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                                        Automated Score Breakdown
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center dark:bg-slate-900 dark:border-slate-800">
+                                            <span className="text-[10px] text-slate-400 block font-medium">Base Criteria Score</span>
+                                            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                                                {baseScore.toFixed(1)}%
+                                            </span>
+                                            <span className="text-[9px] text-slate-400 block">
+                                                ({checkedCount}/{totalRequirements} criteria)
+                                            </span>
+                                        </div>
+
+                                        <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center dark:bg-slate-900 dark:border-slate-800">
+                                            <span className="text-[10px] text-slate-400 block font-medium">Late Penalty</span>
+                                            <span className={`text-sm font-bold ${submission.is_late ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                {submission.is_late ? '-10.0 pts' : '0 pts'}
+                                            </span>
+                                            <span className="text-[9px] text-slate-400 block">
+                                                {submission.is_late ? 'Late Submission Deduction' : 'Submitted On-Time'}
+                                            </span>
+                                        </div>
+
+                                        <div className="p-2.5 rounded-lg bg-slate-900 text-white text-center dark:bg-slate-800 dark:border-slate-700">
+                                            <span className="text-[10px] text-slate-300 block font-semibold">Final Automated Score</span>
+                                            <span className="text-base font-extrabold text-white">
+                                                {automatedCalculatedScore.toFixed(1)}%
+                                            </span>
+                                            <span className="text-[9px] text-slate-300 block">Calculated Automatically</span>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Checker Remarks
+                                        Checker Remarks & Feedback
                                     </label>
                                     <textarea
                                         value={data.remarks}
                                         onChange={(e) => setData('remarks', e.target.value)}
                                         rows={3}
-                                        placeholder="Add comments or feedback for the barangay..."
+                                        placeholder="Add comments or feedback for the barangay secretary..."
                                         className="textarea textarea-bordered w-full text-xs font-medium"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                        Compliance Score (0 - 100%)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="0.5"
-                                        value={data.score}
-                                        onChange={(e) => setData('score', parseFloat(e.target.value))}
-                                        className="input input-sm input-bordered w-32 text-xs font-bold"
                                     />
                                 </div>
 
@@ -211,16 +278,16 @@ export default function SubmissionShow({ submission }: Props) {
                                         type="button"
                                         disabled={processing}
                                         onClick={() => submitReview('verified')}
-                                        className="btn btn-sm btn-success text-white font-semibold text-xs gap-1.5 rounded-lg"
+                                        className="btn btn-sm btn-success text-white font-semibold text-xs gap-1.5 rounded-lg shadow-sm"
                                     >
-                                        <CheckCircle2 className="size-3.5" /> Approve & Verify
+                                        <CheckCircle2 className="size-3.5" /> Approve & Verify ({automatedCalculatedScore.toFixed(1)}%)
                                     </button>
 
                                     <button
                                         type="button"
                                         disabled={processing}
                                         onClick={() => submitReview('returned')}
-                                        className="btn btn-sm btn-error text-white font-semibold text-xs gap-1.5 rounded-lg"
+                                        className="btn btn-sm btn-error text-white font-semibold text-xs gap-1.5 rounded-lg shadow-sm"
                                     >
                                         <RotateCcw className="size-3.5" /> Return With Remarks
                                     </button>
@@ -274,20 +341,32 @@ export default function SubmissionShow({ submission }: Props) {
                                     <strong className="text-slate-800 dark:text-slate-200">{submission.barangay.name}</strong>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-slate-500">Captain:</span>
-                                    <span className="text-slate-700 dark:text-slate-300">{submission.barangay.captain_name || 'N/A'}</span>
+                                    <span className="text-slate-500">Barangay Captain:</span>
+                                    <span className="text-slate-700 dark:text-slate-300">{submission.barangay.captain_name || 'Not set'}</span>
+                                </div>
+                                <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+                                    <span className="text-slate-500">Barangay Secretary:</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-semibold">{submission.barangay.secretary_name || 'Not set'}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Submitted By:</span>
                                     <span className="text-slate-700 dark:text-slate-300">{submission.user.name}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-slate-500">Area:</span>
+                                    <span className="text-slate-500">Area / Category:</span>
                                     <span className="badge badge-ghost badge-sm">{submission.category.name}</span>
                                 </div>
-                                <div className="flex justify-between py-1">
-                                    <span className="text-slate-500">Submitted:</span>
+                                <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
+                                    <span className="text-slate-500">Submission Date:</span>
                                     <span className="text-slate-700 dark:text-slate-300">{new Date(submission.submitted_at).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                    <span className="text-slate-500">Timeliness:</span>
+                                    {submission.is_late ? (
+                                        <span className="badge badge-error badge-xs font-bold text-white">LATE (-10 pts)</span>
+                                    ) : (
+                                        <span className="badge badge-success badge-xs font-bold text-white">ON-TIME</span>
+                                    )}
                                 </div>
                             </div>
                         </div>

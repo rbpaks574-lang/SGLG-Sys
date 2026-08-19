@@ -49,12 +49,24 @@ type Props = {
 };
 
 export default function SubmissionCreate({ categories, userBarangay }: Props) {
-    const [selectedCategory, setSelectedCategory] = useState<CategoryType>(categories[0] || null);
+    // Check URL parameters for shortcut pre-selection
+    const initialCategoryId = typeof window !== 'undefined'
+        ? parseInt(new URLSearchParams(window.location.search).get('category') || '0', 10)
+        : 0;
+    const initialDeadlineId = typeof window !== 'undefined'
+        ? parseInt(new URLSearchParams(window.location.search).get('deadline') || '0', 10)
+        : 0;
+
+    const initialCategory = categories.find((c) => c.id === initialCategoryId) || categories[0] || null;
+    const [selectedCategory, setSelectedCategory] = useState<CategoryType>(initialCategory);
     const [selectedRequirements, setSelectedRequirements] = useState<string[]>([]);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
+    const defaultDeadlineId = initialDeadlineId || initialCategory?.deadlines?.[0]?.id || null;
+
     const { data, setData, post, processing, errors } = useForm({
-        category_id: selectedCategory?.id || 1,
+        category_id: initialCategory?.id || 1,
+        deadline_id: defaultDeadlineId as number | null,
         title: '',
         description: '',
         requirements: [] as string[],
@@ -83,6 +95,8 @@ export default function SubmissionCreate({ categories, userBarangay }: Props) {
     const handleSelectCategory = (cat: CategoryType) => {
         setSelectedCategory(cat);
         setData('category_id', cat.id);
+        const catDefaultDeadlineId = cat.deadlines?.[0]?.id || null;
+        setData('deadline_id', catDefaultDeadlineId);
         setSelectedRequirements([]);
     };
 
@@ -216,23 +230,56 @@ export default function SubmissionCreate({ categories, userBarangay }: Props) {
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-                                {/* Fixed DILG Deadline Display (Non-Editable) */}
-                                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="size-4 text-slate-500 shrink-0" />
-                                        <div>
-                                            <span className="text-[10px] uppercase font-semibold text-slate-400 block">
-                                                Official DILG Deadline (Non-Editable)
-                                            </span>
-                                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                                                {currentDeadline?.title || 'Q1 SGLG Compliance Submission'}
-                                            </span>
+                                {/* Dynamic Deadline Display: Dropdown if multiple deadlines, static display if only 1 deadline */}
+                                {selectedCategory?.deadlines && selectedCategory.deadlines.length > 1 ? (
+                                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="size-4 text-sky-500 shrink-0" />
+                                                <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 tracking-wider">
+                                                    Select Target Deadline ({selectedCategory.deadlines.length} Available)
+                                                </span>
+                                            </div>
+                                            <span className="badge badge-info badge-xs font-semibold">Multiple Deadlines</span>
                                         </div>
+                                        <select
+                                            value={data.deadline_id || ''}
+                                            onChange={(e) => setData('deadline_id', e.target.value ? parseInt(e.target.value, 10) : null)}
+                                            className="select select-sm select-bordered w-full text-xs font-medium bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                                        >
+                                            {selectedCategory.deadlines.map((d) => (
+                                                <option key={d.id} value={d.id}>
+                                                    {d.title} ({d.target_period}) — Due: {new Date(d.due_date).toLocaleDateString()}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <span className="badge badge-neutral badge-sm font-semibold">
-                                        {currentDeadline ? new Date(currentDeadline.due_date).toLocaleDateString() : 'March 31, 2026'}
-                                    </span>
-                                </div>
+                                ) : selectedCategory?.deadlines && selectedCategory.deadlines.length === 1 ? (
+                                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <Calendar className="size-4 text-slate-500 shrink-0" />
+                                            <div>
+                                                <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+                                                    Official DILG Deadline (Single Target Period)
+                                                </span>
+                                                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                                    {selectedCategory.deadlines[0].title} ({selectedCategory.deadlines[0].target_period})
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="badge badge-neutral badge-sm font-semibold">
+                                            {new Date(selectedCategory.deadlines[0].due_date).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="size-4 text-slate-400 shrink-0" />
+                                            <span className="text-xs text-slate-500">Regular Governance Compliance Submission</span>
+                                        </div>
+                                        <span className="badge badge-ghost badge-sm text-[10px]">Open Period</span>
+                                    </div>
+                                )}
 
                                 {/* Required Documents Checklist (Checkboxes) */}
                                 <div>

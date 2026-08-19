@@ -114,6 +114,7 @@ class SubmissionController extends Controller
 
         $request->validate([
             'category_id' => 'required|exists:categories,id',
+            'deadline_id' => 'nullable|exists:deadlines,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'requirements' => 'nullable|array',
@@ -122,7 +123,13 @@ class SubmissionController extends Controller
         ]);
 
         $category = Category::findOrFail($request->category_id);
-        $deadline = Deadline::where('category_id', $category->id)->latest('due_date')->first();
+        $deadline = null;
+        if ($request->filled('deadline_id')) {
+            $deadline = Deadline::where('id', $request->deadline_id)->where('category_id', $category->id)->first();
+        }
+        if (! $deadline) {
+            $deadline = Deadline::where('category_id', $category->id)->latest('due_date')->first();
+        }
 
         $isLate = false;
         if ($deadline && Carbon::now()->isAfter($deadline->due_date)) {
@@ -249,29 +256,56 @@ class SubmissionController extends Controller
         $request->validate([
             'action' => 'required|in:verified,returned,under_review,forwarded',
             'remarks' => 'nullable|string',
-            'score' => 'nullable|numeric|min:0|max:100',
             'checklists' => 'nullable|array',
         ]);
 
         $action = $request->action;
         $remarks = $request->remarks;
-        $score = $request->input('score', $action === 'verified' ? 95.00 : 0.00);
 
         if ($action === 'returned' && empty(trim($remarks ?? ''))) {
             return back()->withErrors(['remarks' => 'Remarks are required when returning a submission for correction.']);
         }
 
-        // Update submission status
+        // Update checklists if provided
+        if ($request->has('checklists')) {
+            foreach ($request->input('checklists') as $reqName => $checked) {
+                SubmissionChecklist::updateOrCreate(
+                    ['submission_id' => $submission->id, 'requirement_name' => $reqName],
+                    [
+                        'is_checked' => (bool) $checked,
+                        'checked_by' => (bool) $checked ? $user->id : null,
+                        'checked_at' => (bool) $checked ? now() : null,
+                    ]
+                );
+            }
+        }
+
+        // Automated scoring: based on verified checklist items with penalty deduction if late
+        $submission->load(['checklists', 'category.documentRequirements']);
+        $totalReqs = $submission->category?->documentRequirements?->count() ?? 0;
+        if ($totalReqs === 0) {
+            $totalReqs = $submission->checklists->count();
+        }
+
+        $checkedCount = $submission->checklists->where('is_checked', true)->count();
+        $baseScore = $totalReqs > 0 ? round(($checkedCount / $totalReqs) * 100, 2) : 100.00;
+        $lateDeduction = $submission->is_late ? 10.00 : 0.00;
+        $automatedScore = max(0.00, round($baseScore - $lateDeduction, 2));
+
+        $finalScore = ($action === 'verified') ? $automatedScore : 0.00;
+
+        // Update submission status and score
         $submission->status = $action;
+        $submission->score = $finalScore;
+
         if ($action === 'verified') {
-            $submission->score = $score;
             $submission->verified_at = now();
             $submission->verified_by = $user->id;
 
             // Recalculate Barangay compliance score
             $avgScore = Submission::where('barangay_id', $submission->barangay_id)
                 ->where('status', 'verified')
-                ->avg('score') ?? 90.00;
+                ->avg('score') ?? $finalScore;
 
             $submission->barangay->update([
                 'compliance_score' => round($avgScore, 2),
@@ -281,20 +315,6 @@ class SubmissionController extends Controller
         }
 
         $submission->save();
-
-        // Update checklists if provided
-        if ($request->has('checklists')) {
-            foreach ($request->input('checklists') as $reqName => $checked) {
-                SubmissionChecklist::updateOrCreate(
-                    ['submission_id' => $submission->id, 'requirement_name' => $reqName],
-                    [
-                        'is_checked' => (bool) $checked,
-                        'checked_by' => $user->id,
-                        'checked_at' => now(),
-                    ]
-                );
-            }
-        }
 
         // Create review record
         SubmissionReview::create([

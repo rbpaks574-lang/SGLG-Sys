@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('code')->unique();
             $table->string('captain_name')->nullable();
+            $table->string('secretary_name')->nullable();
             $table->string('contact_number')->nullable();
             $table->string('pollution_status')->default('Low / Managed');
             $table->integer('population')->default(0);
@@ -24,7 +25,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 2. Enhance Users table with role, username, phone, barangay_id, is_active, last_login_at
+        // 2. Enhance Users table with role, username, phone, barangay_id, is_active, last_login_at, current_session_id
         Schema::table('users', function (Blueprint $table) {
             $table->string('username')->nullable()->unique()->after('name');
             $table->string('phone')->nullable()->after('email');
@@ -32,6 +33,7 @@ return new class extends Migration
             $table->foreignId('barangay_id')->nullable()->after('role')->constrained('barangays')->nullOnDelete();
             $table->boolean('is_active')->default(true)->after('barangay_id');
             $table->timestamp('last_login_at')->nullable()->after('is_active');
+            $table->string('current_session_id')->nullable()->after('last_login_at');
         });
 
         // 3. SGLG Categories (6 Core & Essential Governance Areas)

@@ -75,7 +75,14 @@ export default function AppSidebar() {
         if (href === '/dashboard') {
             return currentUrl === '/dashboard' || currentUrl === '/' || currentUrl.startsWith('/dashboard?');
         }
-        return currentUrl.startsWith(href);
+        if (href === '/submissions/create') {
+            return currentUrl === '/submissions/create' || currentUrl.startsWith('/submissions/create?') || currentUrl.startsWith('/submissions/create/');
+        }
+        if (href === '/submissions') {
+            return (currentUrl === '/submissions' || currentUrl.startsWith('/submissions?')) ||
+                   (currentUrl.startsWith('/submissions/') && !currentUrl.startsWith('/submissions/create'));
+        }
+        return currentUrl === href || currentUrl.startsWith(href + '?') || currentUrl.startsWith(href + '/');
     };
 
     const handleLogout = () => {

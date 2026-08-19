@@ -110,6 +110,7 @@ class BarangayController extends Controller
 
         $validated = $request->validate([
             'captain_name' => 'nullable|string|max:255',
+            'secretary_name' => 'nullable|string|max:255',
             'contact_number' => 'nullable|string|max:50',
             'pollution_status' => 'nullable|string|max:100',
             'population' => 'nullable|integer|min:0',
@@ -119,7 +120,7 @@ class BarangayController extends Controller
 
         AuditLog::log(
             'BARANGAY_UPDATED',
-            "User {$user->name} updated Barangay {$barangay->name} profile (Captain: {$barangay->captain_name}, Pollution: {$barangay->pollution_status}).",
+            "User {$user->name} updated Barangay {$barangay->name} profile (Captain: {$barangay->captain_name}, Secretary: {$barangay->secretary_name}, Pollution: {$barangay->pollution_status}).",
             'Barangay',
             $barangay->id,
             $user

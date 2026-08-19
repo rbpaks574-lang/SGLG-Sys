@@ -28,6 +28,7 @@ class User extends Authenticatable implements PasskeyUser
         'barangay_id',
         'is_active',
         'last_login_at',
+        'current_session_id',
         'current_team_id',
     ];
 

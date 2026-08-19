@@ -20,6 +20,7 @@ type BarangayItem = {
     name: string;
     code: string;
     captain_name?: string;
+    secretary_name?: string;
     contact_number?: string;
     pollution_status: string;
     population: number;
@@ -166,7 +167,8 @@ export default function BarangaysIndex({
                                                 <div className="text-[10px] text-slate-400 font-normal">{b.code}</div>
                                             </td>
                                             <td className="text-slate-600 dark:text-slate-300">
-                                                {b.captain_name || 'N/A'}
+                                                <div className="font-semibold text-slate-800 dark:text-slate-200">{b.captain_name || 'N/A'}</div>
+                                                <div className="text-[10px] text-slate-400 font-normal">Sec: {b.secretary_name || 'Not set'}</div>
                                             </td>
                                             <td>
                                                 <span className="font-bold text-xs font-mono text-slate-800 dark:text-slate-200">
@@ -292,6 +294,10 @@ export default function BarangaysIndex({
                                 <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
                                     <span className="text-slate-500 flex items-center gap-1"><UserCheck className="size-3" /> Punong Barangay:</span>
                                     <strong className="text-slate-800 dark:text-slate-100">{selectedBarangay.captain_name || 'Not specified'}</strong>
+                                </div>
+                                <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
+                                    <span className="text-slate-500 flex items-center gap-1"><UserCheck className="size-3" /> Barangay Secretary:</span>
+                                    <strong className="text-slate-800 dark:text-slate-100">{selectedBarangay.secretary_name || 'Not specified'}</strong>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-200 dark:border-slate-700">
                                     <span className="text-slate-500 flex items-center gap-1"><Phone className="size-3" /> Contact:</span>

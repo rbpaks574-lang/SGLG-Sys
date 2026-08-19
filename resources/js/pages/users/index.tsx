@@ -519,7 +519,7 @@ export default function UsersIndex({ users, barangays, filters }: Props) {
                                         onChange={(e) => setData('role', e.target.value)}
                                         className="select select-sm select-bordered w-full text-xs font-medium bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
                                     >
-                                        <option value="barangay">Barangay Submitter</option>
+                                        <option value="barangay">Barangay Secretary (Submitter)</option>
                                         <option value="checker">DILG Checker</option>
                                         <option value="admin">DILG Admin</option>
                                     </select>
