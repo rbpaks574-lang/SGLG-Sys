@@ -43,7 +43,21 @@ export default function SubmissionShow({ submission }: Props) {
     const user = page.props.auth?.user;
     const canReview = user?.role === 'admin' || user?.role === 'checker';
 
+    const [selectedFile, setSelectedFile] = useState<{ id?: number; name: string; type?: string; size?: number; url?: string } | null>(null);
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+    const initialChecklists: Record<string, boolean> = {};
+    (submission?.checklists || []).forEach((c) => {
+        initialChecklists[c.requirement_name] = Boolean(c.is_checked);
+    });
+
     const [checklistState, setChecklistState] = useState<Record<string, boolean>>(initialChecklists);
+
+    const { data, setData, post, processing } = useForm({
+        action: 'verified' as 'verified' | 'returned' | 'under_review' | 'forwarded',
+        remarks: '',
+        checklists: initialChecklists,
+    });
 
     const toggleChecklist = (reqName: string) => {
         const updated = {
@@ -55,10 +69,11 @@ export default function SubmissionShow({ submission }: Props) {
     };
 
     // Calculate automated score
-    const totalRequirements = submission.checklists.length || 1;
+    const checklistsList = submission?.checklists || [];
+    const totalRequirements = checklistsList.length > 0 ? checklistsList.length : 1;
     const checkedCount = Object.values(checklistState).filter(Boolean).length;
     const baseScore = Math.round((checkedCount / totalRequirements) * 100 * 10) / 10;
-    const latePenalty = submission.is_late ? 10.0 : 0.0;
+    const latePenalty = submission?.is_late ? 10.0 : 0.0;
     const automatedCalculatedScore = Math.max(0, Math.round((baseScore - latePenalty) * 10) / 10);
 
     const submitReview = (actionType: 'verified' | 'returned' | 'under_review' | 'forwarded') => {
@@ -95,24 +110,24 @@ export default function SubmissionShow({ submission }: Props) {
                         <div>
                             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                                 <FileCheck2 className="size-5 text-slate-600 dark:text-slate-300" />
-                                {submission.title}
+                                {submission?.title || 'Submission Details'}
                             </h1>
                             <p className="text-xs text-slate-500">
-                                {submission.barangay.name} • {submission.category.name}
+                                {submission?.barangay?.name || 'Barangay'} • {submission?.category?.name || 'General Area'}
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {getStatusBadge(submission.status)}
-                        {submission.is_late && (
+                        {getStatusBadge(submission?.status || 'pending')}
+                        {submission?.is_late && (
                             <span className="badge badge-error badge-sm text-white font-bold">
                                 LATE SUBMISSION
                             </span>
                         )}
-                        {submission.score > 0 && (
+                        {(submission?.score ?? 0) > 0 && (
                             <span className="badge badge-neutral font-semibold text-xs font-mono">
-                                Verified Score: {submission.score.toFixed(1)}%
+                                Verified Score: {Number(submission.score).toFixed(1)}%
                             </span>
                         )}
                     </div>
@@ -124,11 +139,11 @@ export default function SubmissionShow({ submission }: Props) {
                         {/* Files Inspection */}
                         <div className="rounded-xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-3">
-                                Attached Compliance Files ({submission.files.length})
+                                Attached Compliance Files ({(submission?.files || []).length})
                             </h3>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {submission.files.map((file) => (
+                                {(submission?.files || []).map((file) => (
                                     <div
                                         key={file.id}
                                         className="p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 flex flex-col justify-between"
@@ -195,7 +210,7 @@ export default function SubmissionShow({ submission }: Props) {
                                         Verify Compliance Criteria (Tick verified requirements):
                                     </label>
                                     <div className="space-y-1.5 p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/40 dark:border-slate-700">
-                                        {submission.checklists.map((c) => {
+                                        {(submission?.checklists || []).map((c) => {
                                             const isChecked = Boolean(checklistState[c.requirement_name]);
                                             return (
                                                 <label
@@ -242,11 +257,11 @@ export default function SubmissionShow({ submission }: Props) {
 
                                         <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center dark:bg-slate-900 dark:border-slate-800">
                                             <span className="text-[10px] text-slate-400 block font-medium">Late Penalty</span>
-                                            <span className={`text-sm font-bold ${submission.is_late ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                {submission.is_late ? '-10.0 pts' : '0 pts'}
+                                            <span className={`text-sm font-bold ${submission?.is_late ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                                {submission?.is_late ? '-10.0 pts' : '0 pts'}
                                             </span>
                                             <span className="text-[9px] text-slate-400 block">
-                                                {submission.is_late ? 'Late Submission Deduction' : 'Submitted On-Time'}
+                                                {submission?.is_late ? 'Late Submission Deduction' : 'Submitted On-Time'}
                                             </span>
                                         </div>
 
@@ -302,7 +317,7 @@ export default function SubmissionShow({ submission }: Props) {
                             </h3>
 
                             <div className="space-y-2.5">
-                                {submission.reviews.length === 0 ? (
+                                {(submission?.reviews || []).length === 0 ? (
                                     <p className="text-xs text-slate-400 py-2">No review remarks yet.</p>
                                 ) : (
                                     submission.reviews.map((r) => (
@@ -312,10 +327,10 @@ export default function SubmissionShow({ submission }: Props) {
                                         >
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                                    by {r.checker?.name}
+                                                    by {r.checker?.name || 'Validator'}
                                                 </span>
                                                 <span className="text-[10px] text-slate-400">
-                                                    {new Date(r.created_at).toLocaleString()}
+                                                    {r.created_at ? new Date(r.created_at).toLocaleString() : ''}
                                                 </span>
                                             </div>
                                             <p className="text-slate-600 dark:text-slate-300">
@@ -338,31 +353,31 @@ export default function SubmissionShow({ submission }: Props) {
                             <div className="space-y-2 text-xs">
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Barangay:</span>
-                                    <strong className="text-slate-800 dark:text-slate-200">{submission.barangay.name}</strong>
+                                    <strong className="text-slate-800 dark:text-slate-200">{submission?.barangay?.name || 'N/A'}</strong>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Barangay Captain:</span>
-                                    <span className="text-slate-700 dark:text-slate-300">{submission.barangay.captain_name || 'Not set'}</span>
+                                    <span className="text-slate-700 dark:text-slate-300">{submission?.barangay?.captain_name || 'Not set'}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Barangay Secretary:</span>
-                                    <span className="text-slate-700 dark:text-slate-300 font-semibold">{submission.barangay.secretary_name || 'Not set'}</span>
+                                    <span className="text-slate-700 dark:text-slate-300 font-semibold">{submission?.barangay?.secretary_name || 'Not set'}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Submitted By:</span>
-                                    <span className="text-slate-700 dark:text-slate-300">{submission.user.name}</span>
+                                    <span className="text-slate-700 dark:text-slate-300">{submission?.user?.name || 'N/A'}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Area / Category:</span>
-                                    <span className="badge badge-ghost badge-sm">{submission.category.name}</span>
+                                    <span className="badge badge-ghost badge-sm">{submission?.category?.name || 'N/A'}</span>
                                 </div>
                                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-500">Submission Date:</span>
-                                    <span className="text-slate-700 dark:text-slate-300">{new Date(submission.submitted_at).toLocaleDateString()}</span>
+                                    <span className="text-slate-700 dark:text-slate-300">{submission?.submitted_at ? new Date(submission.submitted_at).toLocaleDateString() : 'N/A'}</span>
                                 </div>
                                 <div className="flex justify-between py-1">
                                     <span className="text-slate-500">Timeliness:</span>
-                                    {submission.is_late ? (
+                                    {submission?.is_late ? (
                                         <span className="badge badge-error badge-xs font-bold text-white">LATE (-10 pts)</span>
                                     ) : (
                                         <span className="badge badge-success badge-xs font-bold text-white">ON-TIME</span>
@@ -378,7 +393,7 @@ export default function SubmissionShow({ submission }: Props) {
                             </h3>
 
                             <div className="space-y-1.5">
-                                {submission.checklists.map((c, i) => (
+                                {(submission?.checklists || []).map((c, i) => (
                                     <div
                                         key={i}
                                         className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-xs dark:bg-slate-800/40"
