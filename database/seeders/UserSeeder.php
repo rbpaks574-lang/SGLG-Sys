@@ -88,36 +88,5 @@ class UserSeeder extends Seeder
                 ]
             );
         }
-
-        // 4. Sample Barangay Submitters
-        $sampleBarangays = [
-            ['name' => 'Barangay I (Poblacion 1)', 'email' => 'poblacion1@silang.gov.ph', 'username' => 'sec_poblacion1', 'sec_name' => 'Maria Kristina Alarcon (Sec)'],
-            ['name' => 'Biga 1', 'email' => 'biga1@silang.gov.ph', 'username' => 'sec_biga1', 'sec_name' => 'Arnel P. Bautista (Sec)'],
-            ['name' => 'Biluso', 'email' => 'biluso@silang.gov.ph', 'username' => 'sec_biluso', 'sec_name' => 'Grace L. Castro (Sec)'],
-            ['name' => 'Acacia', 'email' => 'acacia@silang.gov.ph', 'username' => 'sec_acacia', 'sec_name' => 'Danilo V. Ramos (Sec)'],
-            ['name' => 'Adlas', 'email' => 'adlas@silang.gov.ph', 'username' => 'sec_adlas', 'sec_name' => 'Rosanna T. Medina (Sec)'],
-            ['name' => 'Balubad', 'email' => 'balubad@silang.gov.ph', 'username' => 'sec_balubad', 'sec_name' => 'Mark Joseph Luna (Sec)'],
-            ['name' => 'Tartaria', 'email' => 'tartaria@silang.gov.ph', 'username' => 'sec_tartaria', 'sec_name' => 'Elena F. Gomez (Sec)'],
-            ['name' => 'Lucsuhin', 'email' => 'lucsuhin@silang.gov.ph', 'username' => 'sec_lucsuhin', 'sec_name' => 'Carlos M. Perez (Sec)'],
-        ];
-
-        foreach ($sampleBarangays as $sb) {
-            $barangay = Barangay::where('name', $sb['name'])->first();
-            if ($barangay) {
-                User::updateOrCreate(
-                    ['email' => $sb['email']],
-                    [
-                        'name' => $sb['sec_name'],
-                        'username' => $sb['username'],
-                        'phone' => '0918-'.rand(100, 999).'-'.rand(1000, 9999),
-                        'password' => $password,
-                        'role' => 'barangay',
-                        'barangay_id' => $barangay->id,
-                        'is_active' => true,
-                        'email_verified_at' => now(),
-                    ]
-                );
-            }
-        }
     }
 }
